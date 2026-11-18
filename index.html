@@ -168,6 +168,14 @@ function calculateRoute() {
 
         const dest = destinations[selectedIndex];
         
+        // ▼▼▼ ここから書き換え ▼▼▼
+
+        // 旧APIのモード名を、新API(Routes API)用に変換する
+        let routeMode = "DRIVE";
+        if (mode === "WALKING") routeMode = "WALK";
+        if (mode === "TRANSIT") routeMode = "TRANSIT";
+        if (mode === "DRIVING") routeMode = "DRIVE";
+        
         // Routes API 用のリクエストデータ
         const requestBody = {
             origin: {
@@ -186,9 +194,13 @@ function calculateRoute() {
                     }
                 }
             },
-            travelMode: mode,
-            routingPreference: 'TRAFFIC_UNAWARE'
+            travelMode: routeMode
         };
+
+        // routingPreference は「車(DRIVE)」のときのみ設定可能
+        if (routeMode === 'DRIVE') {
+            requestBody.routingPreference = 'TRAFFIC_UNAWARE';
+        }
 
         // Routes API への直接通信 (fetch)
         // ※ YOUR_API_KEY_HERE を実際のAPIキーに書き換えてください
