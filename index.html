@@ -64,7 +64,7 @@
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCzrQQ6y01Usax8pyxuqxl0HPT9Ilrve2Q&libraries=geometry,places&callback=initMap" async defer></script>
     
     <script>
-        let map, directionsService, directionsRenderer, placesService;
+        let map, directionsService, directionsRenderer, placesService, currentPolyline;
         let currentLocation = null;
         let destinations = [];
 
@@ -212,17 +212,19 @@ function calculateRoute() {
                 // 取得したルートデータ（エンコードされたポリライン）を地図に描画
                 const route = data.routes[0];
                 const decodedPath = google.maps.geometry.encoding.decodePath(route.polyline.encodedPolyline);
-                
+
                 // 既存のルートをクリアして新しく描画
-                directionsRenderer.setDirections({routes: []}); // 一旦クリア
+                directionsRenderer.setDirections({routes: []});
+                if (currentPolyline) currentPolyline.setMap(null); // ★前の線を地図から消す
                 
-                const polyline = new google.maps.Polyline({
+                currentPolyline = new google.maps.Polyline({ // ★const を currentPolyline に変更
                     path: decodedPath,
                     strokeColor: '#0000FF',
                     strokeOpacity: 0.8,
                     strokeWeight: 6
                 });
-                polyline.setMap(map);
+                currentPolyline.setMap(map); // ★polyline を currentPolyline に変更
+
 
                 // パネルに距離と時間を表示
                 const distanceKm = (route.distanceMeters / 1000).toFixed(1);
@@ -245,54 +247,75 @@ function calculateRoute() {
         });
     }
         
-
-        function findNearbyRestaurants() {
+function findNearbyRestaurants() {
             if (!currentLocation) return alert("現在地を取得中です。");
 
             const listEl = document.getElementById("restaurant-list");
             listEl.innerHTML = "検索中...";
 
-            const request = {
-                location: currentLocation,
-                radius: '800',
-                type: ['restaurant']
+            const requestBody = {
+                includedTypes: ["restaurant"],
+                maxResultCount: 10,
+                locationRestriction: {
+                    circle: {
+                        center: {
+                            latitude: currentLocation.lat,
+                            longitude: currentLocation.lng
+                        },
+                        radius: 800.0
+                    }
+                }
             };
 
-            placesService.nearbySearch(request, (results, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+            fetch('https://places.googleapis.com/v1/places:searchNearby', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // ↓ルート検索と同じご自身のAPIキーです
+                    'X-Goog-Api-Key': 'AIzaSyCzrQQ6y01Usax8pyxuqxl0HPT9Ilrve2Q',
+                    'X-Goog-FieldMask': 'places.displayName,places.rating,places.priceLevel,places.googleMapsUri'
+                },
+                body: JSON.stringify(requestBody)
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                if (data.places && data.places.length > 0) {
                     listEl.innerHTML = "";
-                    results.sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 10).forEach(place => {
-                        const priceLevel = place.price_level !== undefined ? "¥".repeat(place.price_level + 1) : "価格帯データなし";
+                    // 評価（rating）が高い順に並び替え
+                    data.places.sort((a, b) => (b.rating || 0) - (a.rating || 0)).forEach(place => {
+                        const name = place.displayName ? place.displayName.text : "店名不明";
                         const rating = place.rating ? `⭐${place.rating}` : "評価なし";
                         
+                        let priceStr = "価格帯データなし";
+                        if (place.priceLevel === "PRICE_LEVEL_INEXPENSIVE") priceStr = "¥";
+                        if (place.priceLevel === "PRICE_LEVEL_MODERATE") priceStr = "¥¥";
+                        if (place.priceLevel === "PRICE_LEVEL_EXPENSIVE") priceStr = "¥¥¥";
+                        if (place.priceLevel === "PRICE_LEVEL_VERY_EXPENSIVE") priceStr = "¥¥¥¥";
+
+                        const uri = place.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`;
+
                         const div = document.createElement("div");
                         div.className = "restaurant-item";
                         div.innerHTML = `
-                            <h4>${place.name}</h4>
-                            <p>${rating} / ${priceLevel}</p>
-                            <button class="detail-btn" onclick="openPlaceDetails('${place.place_id}')">メニュー・詳細を見る</button>
+                            <h4>${name}</h4>
+                            <p>${rating} / ${priceStr}</p>
+                            <button class="detail-btn" onclick="window.open('${uri}', '_blank')">Googleマップで見る</button>
                         `;
                         listEl.appendChild(div);
                     });
                 } else {
                     listEl.innerHTML = "近くに飲食店が見つかりませんでした。";
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                listEl.innerHTML = "検索でエラーが発生しました。";
             });
         }
-
-        function openPlaceDetails(placeId) {
-            const request = {
-                placeId: placeId,
-                fields: ['url']
-            };
-            placesService.getDetails(request, (place, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK && place.url) {
-                    window.open(place.url, '_blank');
-                } else {
-                    alert("詳細URLが取得できませんでした。");
-                }
-            });
-        }
+        // ※openPlaceDetails 関数は不要になったため削除してOKです
     </script>
 </body>
 </html>
