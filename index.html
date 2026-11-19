@@ -238,11 +238,14 @@ function calculateRoute() {
                 currentPolyline.setMap(map); // ★polyline を currentPolyline に変更
 
 
-                // パネルに距離と時間、Googleマップへのリンクボタンを表示
+               // パネルに距離と時間、Googleマップ（店舗詳細）へのリンクボタンを表示
                 const distanceKm = (route.distanceMeters / 1000).toFixed(1);
                 const durationMin = Math.round(parseInt(route.duration) / 60);
-                const gmapMode = mode.toLowerCase(); // driving, walking, transit に変換
-                const gmapUrl = `https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lng}&travelmode=${gmapMode}`;
+                const gmapPlaceUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dest.name)}`;
+
+                document.getElementById("directions-panel").innerHTML = 
+                    `<p><b>距離:</b> ${distanceKm} km <br><b>予想時間:</b> 約 ${durationMin} 分</p>
+                     <button class="detail-btn" style="width: 100%; padding: 10px; font-size: 14px;" onclick="window.open('${gmapPlaceUrl}', '_blank')">Googleマップで詳細・クチコミを見る</button>`;
 
                 document.getElementById("directions-panel").innerHTML = 
                     `<p><b>距離:</b> ${distanceKm} km <br><b>予想時間:</b> 約 ${durationMin} 分</p>
