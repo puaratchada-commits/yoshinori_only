@@ -247,10 +247,7 @@ function calculateRoute() {
                     `<p><b>距離:</b> ${distanceKm} km <br><b>予想時間:</b> 約 ${durationMin} 分</p>
                      <button class="detail-btn" style="width: 100%; padding: 10px; font-size: 14px;" onclick="window.open('${gmapPlaceUrl}', '_blank')">Googleマップで詳細・クチコミを見る</button>`;
 
-                document.getElementById("directions-panel").innerHTML = 
-                    `<p><b>距離:</b> ${distanceKm} km <br><b>予想時間:</b> 約 ${durationMin} 分</p>
-                     <button class="detail-btn" style="width: 100%; padding: 10px; font-size: 14px;" onclick="window.open('${gmapUrl}', '_blank')">Googleマップでナビを開始</button>`;
-                    
+                
                 // ルート全体が見えるように地図のズームを調整
                 const bounds = new google.maps.LatLngBounds();
                 decodedPath.forEach(point => bounds.extend(point));
